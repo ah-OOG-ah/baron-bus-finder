@@ -19,11 +19,11 @@ crossorigin=""/>
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
-    var marker = L.marker([40.37492021848427, -80.61539890312362]).addTo(map);
-    var marker = L.marker([40.37413361572932, -80.61914875347286]).addTo(map);
-    var marker = L.marker([40.376523084308474, -80.61992517430251]).addTo(map);
-    var marker = L.marker([40.3754026019317, -80.62578463268844]).addTo(map);
-    var marker = L.marker([40.37586277667017, -80.62731848116141]).addTo(map);
+    var marker = L.marker([40.37492021848427, -80.61539890312362]).addTo(map).bindPopup("Bl. Solanus Casey Hall");
+    var marker = L.marker([40.37413361572932, -80.61914875347286]).addTo(map).bindPopup("Sts. Vianney/Bonaventure Hall");
+    var marker = L.marker([40.376523084308474, -80.61992517430251]).addTo(map).bindPopup("Rosary Circle");
+    var marker = L.marker([40.3754026019317, -80.62578463268844]).addTo(map).bindPopup("St. Junipero Serra Hall");
+    var marker = L.marker([40.37586277667017, -80.62731848116141]).addTo(map).bindPopup("St. Agnes Hall");
     var bus = L.icon({
         iconUrl: 'baron_bus1.png',
         iconSize:     [70.5, 42.5], // size of the icon
