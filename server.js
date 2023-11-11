@@ -22,7 +22,7 @@ server.on('request', (req, res) => {
     var filepath = prefix + req.url;
     if (filepath == prefix + "/") { filepath = prefix + "/index.html"; }
 
-    serveFile(filepath, res);
+    serveFile(filepath, prefix, res);
   } else if (req.method == "POST") {
 
     // TODO: Implement Baron Bus position updater
@@ -36,7 +36,13 @@ server.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
 });
 
-function serveFile(fPath, response) {
+function serveFile(fPath, srvDir, response) {
+
+  // Basic file path check: don't allow files from outside the serve directory to be served
+  // Redirect to something innocuous
+  if (!path.resolve(fPath).startsWith(path.resolve(srvDir))) {
+    fPath = srvDir + "/404.html";
+  }
 
   // Set content type, more can be added as needed
   const extname = path.extname(fPath);
