@@ -1,84 +1,122 @@
 // Imports
-const http = require('node:http');
-const fs = require('fs');
-const path = require('path');
+import busboy from "busboy";
+import express from "express";
+import fs from 'fs';
 
-const hostname = '127.0.0.1';
-const port = 3000;
+// Get the config file, prefer the normal one
+var c = "./config.example.js";
+if (fs.existsSync("./config.js")) {
+  c = "./config.js";
+}
+const config = await import(c);
 
-const server = http.createServer();
+// Make a server
+const server = express();
 
-// The server itself
-server.on('request', (req, res) => {
+// Serve static files from PREFIX, also handles index.html for some reason
+server.use(express.static(config.PREFIX));
+// Accept application/json data from POSTs
+//server.use(express.json());
 
-  // Debugging only
-  console.log(req);
-  
-  // Handle HTTP methods
-  if (req.method == "GET") {
+// Handle POSTing the bus location
+server.post("/", (req, res) => {
 
-    // Set file path, special handling for the index
-    const prefix = "./page";
-    var filepath = prefix + req.url;
-    if (filepath == prefix + "/") { filepath = prefix + "/index.html"; }
+  // Convienence
+  const b = req.body;
+  var time;
+  var lat;
+  var long;
+  var sign;
+  var status = 200;
+  console.log(req.headers['content-length']);
 
-    serveFile(filepath, prefix, res);
-  } else if (req.method == "POST") {
+  // Exit early on too-large content; I will NOT succumb to a gigabyte of 4's
+  if (req.headers['content-length'] > config.MAX_MSG_BYTES) {
 
-    // TODO: Implement Baron Bus position updater
-    res.statusCode = 501;
-    res.setHeader('Content-Type', 'text/plain');
-    res.end('WIP\n');
-  }
-});
-
-server.listen(port, hostname, () => {
-  console.log(`Server running at http://${hostname}:${port}/`);
-});
-
-function serveFile(fPath, srvDir, response) {
-
-  // Basic file path check: don't allow files from outside the serve directory to be served
-  // Redirect to something innocuous
-  if (!path.resolve(fPath).startsWith(path.resolve(srvDir))) {
-    fPath = srvDir + "/404.html";
+    res.status(413);
+    res.send('Error 413: Content Too Large');
+    return;
   }
 
-  // Set content type, more can be added as needed
-  const extname = path.extname(fPath);
-  var contentType = "text/plain";
-  switch (extname) {
-    case '.css':
-        contentType = 'text/css';
-        break;
-    case '.html':
-        contentType = 'text/html';
-        break;
-    case '.js':
-        contentType = 'text/javascript';
-        break;
-    case '.png':
-        contentType = 'image/png';
-        break;
-  }
-
-  fs.readFile(fPath, function(error, content) {
-
-    if (error) {
-
-      if(error.code == 'ENOENT') {
-
-        response.writeHead(404);
-        response.end("Error 404: File not found");
-      } else {
-
-        response.writeHead(500);
-        response.end("Error 500: Internal server error");
-      }
-    } else {
-
-        response.writeHead(200, { 'Content-Type': contentType });
-        response.end(content, 'utf-8');
+  // Parse the request, with strict limits
+  const bb = busboy({
+    headers: req.headers,
+    limits: {
+      fieldNameSize: 32,
+      fieldSize: config.MAX_MSG_BYTES,
+      fields: 3,
+      fileSize: config.MAX_MSG_BYTES,
+      files: 1,
+      parts: 4
     }
   });
-}
+
+  // Get the fields
+  bb.on("field", (name, value) => {
+    switch (name) {
+      case "time":
+        time = value; break;
+      case "lat":
+        lat = parseFloat(value); break;
+      case "long":
+        long = parseFloat(value); break;
+      default:
+        status = 400;
+        break;
+    }
+  });
+
+  // Get the file
+  bb.on("file", (name, stream, info) => {
+    var bufs = [];
+    stream.on('data', (d) => { bufs.push(d); });
+    stream.on('end', () => { sign = Buffer.concat(bufs); });
+    console.log("Loaded file!");
+  });
+
+  // Validate message
+  bb.on("close", () => {
+
+    // Must have these fields
+    // Sign should really be Buffer, but JS is lame
+    if (typeof time !== "string"
+      || typeof lat !== "number"
+      || typeof long !== "number"
+      || typeof sign !== "object" || sign == null) {
+      
+      status = 400;
+      console.log("oops");
+      console.log(time);
+      console.log(lat);
+      console.log(long);
+      console.log(sign);
+    } else {
+
+      // Check the message signature
+      // This SHOULD be all string concatenation
+      const data = time + lat + long;
+      console.log(data);
+      if (!config.verifyRaw(data, sign)) {
+
+        status = 401;
+      }
+    }
+
+    switch (status) {
+      case 200: res.send("200 OK; Bus updated!"); break;
+      case 400: res.send("Error 400: Bad Request"); break;
+      case 401: res.send('Error 401: Not Authorized'); break;
+      default:  status = 500; res.send("Error 500: Internal Server Error"); break;
+    }
+    res.status(status);
+
+    console.log("Processing over.");
+  });
+
+  req.pipe(bb);
+});
+
+// Start the server!
+server.listen(config.PORT, () => {
+  console.log(`Express running on http://${config.HOSTNAME}:${config.PORT}/`);
+});
