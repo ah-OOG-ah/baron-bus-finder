@@ -2,7 +2,7 @@
 import crypto from "crypto";
 import fs from "fs";
 
-const bits = "2048";
+const bits = "4096";
 const privKey = fs.readFileSync("./ssl/rsa_" + bits + "_priv.pem");
 const pubKey = fs.readFileSync("./ssl/rsa_" + bits + "_pub.pem");
 

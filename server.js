@@ -57,9 +57,9 @@ server.post("/", (req, res) => {
       case "time":
         time = value; break;
       case "lat":
-        lat = value; break;
+        lat = parseFloat(value); break;
       case "long":
-        long = value; break;
+        long = parseFloat(value); break;
       default:
         status = 400;
         break;
@@ -68,7 +68,9 @@ server.post("/", (req, res) => {
 
   // Get the file
   bb.on("file", (name, stream, info) => {
-    sign = stream.read();
+    var bufs = [];
+    stream.on('data', (d) => { bufs.push(d); });
+    stream.on('end', () => { sign = Buffer.concat(bufs); });
     console.log("Loaded file!");
   });
 
@@ -83,12 +85,18 @@ server.post("/", (req, res) => {
       || typeof sign !== "object" || sign == null) {
       
       status = 400;
+      console.log("oops");
+      console.log(time);
+      console.log(lat);
+      console.log(long);
+      console.log(sign);
     } else {
 
       // Check the message signature
       // This SHOULD be all string concatenation
       const data = time + lat + long;
-      if (!config.verify(data, b.sign)) {
+      console.log(data);
+      if (!config.verifyRaw(data, sign)) {
 
         status = 401;
       }
