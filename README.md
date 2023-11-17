@@ -5,4 +5,4 @@ Website files are in `./page/`, server file is `./server.js`. `./ssl/` is where 
 
 ### To run
 Install NodeJS; this was tested against NodeJS v21.1.0, but it probably works with the latest and LTS versions as of 11/11/2023.
-Running `node server.js` will start a server at http://localhost:3000 for testing.
+Run `./gen_keys.sh` to generate the required keys; the private key can be copied to wherever you're signing the data. Running `node server.js` will start a server at http://localhost:3000 for testing.

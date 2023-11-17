@@ -1,9 +1,15 @@
+// Sets up and runs the actual server
+
 // Imports
 import busboy from "busboy";
+import compression from "compression";
 import express from "express";
 import fs from 'fs';
 
-// Get the config file, prefer the normal one
+// Load the state tracker
+const state = await import("./state.js");
+
+// Load the config file, prefer the normal one
 var c = "./config.example.js";
 if (fs.existsSync("./config.js")) {
   c = "./config.js";
@@ -15,8 +21,8 @@ const server = express();
 
 // Serve static files from PREFIX, also handles index.html for some reason
 server.use(express.static(config.PREFIX));
-// Accept application/json data from POSTs
-//server.use(express.json());
+// Accept gzip compressed requests
+server.use(compression());
 
 // Handle POSTing the bus location
 server.post("/", (req, res) => {
@@ -99,6 +105,10 @@ server.post("/", (req, res) => {
       if (!config.verifyRaw(data, sign)) {
 
         status = 401;
+      } else {
+
+        // All good, update bus
+        state.updateBusLoc(time, lat, long);
       }
     }
 
@@ -114,6 +124,12 @@ server.post("/", (req, res) => {
   });
 
   req.pipe(bb);
+});
+
+// API for getting the bus location
+server.get("/api", (req, res) => {
+
+  res.json(state.getBusLoc());
 });
 
 // Start the server!

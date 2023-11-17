@@ -21,4 +21,14 @@ var busIcon = L.icon({
     iconAnchor:  [22, 94],           // point of the icon which will correspond to marker's location
     popupAnchor: [15, -95]           // point from which the popup should open relative to the iconAnchor
 });
-L.marker([40.374872591295905, -80.62110820285449], {icon: busIcon}).addTo(map).bindPopup("I am the Baron Bus.");
+var busMarker = L.marker([40.374162, -80.619249], {icon: busIcon}).addTo(map).bindPopup("I am the Baron Bus.");
+
+// Make a callback to update the bus every 5 seconds
+setInterval(updateBus, 5000);
+
+async function updateBus() {
+    let response = await fetch("./api");
+    let latlng = await response.json();
+    console.log(latlng);
+    busMarker.setLatLng([latlng.lat, latlng.long]);
+}
